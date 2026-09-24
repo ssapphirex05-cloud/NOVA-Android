@@ -1095,9 +1095,14 @@ private fun ChatScreen(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(
-                        if (draft.isBlank()) NovaColors.Panel3
-                        else Brush.linearGradient(listOf(Color(0xFF2F9CE5), Color(0xFF2485D1)))
+                    .then(
+                        if (draft.isBlank()) {
+                            Modifier.background(NovaColors.Panel3)
+                        } else {
+                            Modifier.background(
+                                Brush.linearGradient(listOf(Color(0xFF2F9CE5), Color(0xFF2485D1)))
+                            )
+                        }
                     )
                     .clickable(enabled = draft.isNotBlank() && !state.busy) {
                         val text = draft
