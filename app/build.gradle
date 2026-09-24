@@ -2,6 +2,14 @@ plugins {
     id 'com.android.application'
 }
 
+// google-services.json is intentionally optional at source level so CI can still
+// build the APK before Firebase is configured. Once the file is placed in app/,
+// the Google Services plugin is applied automatically and FCM becomes active.
+def firebaseConfigPresent = file('google-services.json').exists()
+if (firebaseConfigPresent) {
+    apply plugin: 'com.google.gms.google-services'
+}
+
 android {
     namespace 'com.nova.messenger'
     compileSdk 35
@@ -10,11 +18,11 @@ android {
         applicationId 'com.nova.messenger'
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName '1.0.0'
+        versionCode 3
+        versionName '1.1.0'
 
-        // Current NOVA host. Change this one value if the web address changes.
         buildConfigField 'String', 'NOVA_URL', '"https://246830.9yy8ob5y94yx.mjtest.ru/nova_messenger_v1/"'
+        buildConfigField 'boolean', 'FIREBASE_CONFIGURED', firebaseConfigPresent ? 'true' : 'false'
     }
 
     buildFeatures {
@@ -23,8 +31,8 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix '.debug'
-            versionNameSuffix '-debug'
+            // Keep the production applicationId so one Firebase Android app
+            // (com.nova.messenger) works for both GitHub debug builds and release builds.
         }
         release {
             minifyEnabled false
@@ -37,4 +45,9 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:34.19.0')
+    implementation 'com.google.firebase:firebase-messaging'
 }

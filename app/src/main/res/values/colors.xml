@@ -5,4 +5,5 @@
     <color name="nova_accent">#35B9FF</color>
     <color name="nova_text">#EAF6FF</color>
     <color name="nova_muted">#8CA5BA</color>
+    <color name="nova_notification_accent">#45A3F4</color>
 </resources>

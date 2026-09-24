@@ -1,0 +1,2 @@
+Upload these files over the same paths in the existing NOVA-Android GitHub repository.
+After that add app/google-services.json from Firebase and let GitHub Actions rebuild.

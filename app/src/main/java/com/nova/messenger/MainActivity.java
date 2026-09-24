@@ -39,6 +39,12 @@ public class MainActivity extends Activity {
     private static final int FILE_CHOOSER_REQUEST = 1201;
     private static final int WEB_PERMISSION_REQUEST = 1202;
     private static final int STORAGE_PERMISSION_REQUEST = 1203;
+    private static final int NOTIFICATION_PERMISSION_REQUEST = 1204;
+
+    public static final String EXTRA_PUSH_KIND = "nova_push_kind";
+    public static final String EXTRA_PUSH_CONVERSATION_ID = "nova_push_conversation_id";
+    public static final String EXTRA_PUSH_REQUEST_ID = "nova_push_request_id";
+    private static volatile boolean appForeground = false;
 
     private FrameLayout root;
     private WebView webView;
@@ -68,6 +74,7 @@ public class MainActivity extends Activity {
         errorPanel = findViewById(R.id.errorPanel);
         retryButton = findViewById(R.id.retryButton);
 
+        NotificationHelper.ensureChannel(this);
         configureWebView();
         retryButton.setOnClickListener(v -> loadNova());
 
@@ -76,6 +83,7 @@ public class MainActivity extends Activity {
         } else {
             loadNova();
         }
+        handlePushIntent(getIntent(), savedInstanceState != null);
     }
 
     private void configureWebView() {
@@ -89,7 +97,7 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " NOVA-Android/1.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " NOVA-Android/1.1.0");
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
@@ -110,6 +118,56 @@ public class MainActivity extends Activity {
         showWebView();
         progress.setVisibility(View.VISIBLE);
         webView.loadUrl(BuildConfig.NOVA_URL);
+    }
+
+    public static boolean isAppForeground() {
+        return appForeground;
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST);
+        }
+    }
+
+    private String targetUrlFromIntent(Intent intent) {
+        if (intent == null) return null;
+        String kind = intent.getStringExtra(EXTRA_PUSH_KIND);
+        long conversationId = intent.getLongExtra(EXTRA_PUSH_CONVERSATION_ID, 0L);
+        if ("contact-request".equals(kind)) return BuildConfig.NOVA_URL + "?novaOpen=contacts";
+        if (conversationId > 0L) return BuildConfig.NOVA_URL + "?novaOpen=chat&cid=" + conversationId;
+        return null;
+    }
+
+    private void handlePushIntent(Intent intent, boolean restoredState) {
+        String target = targetUrlFromIntent(intent);
+        if (target == null || webView == null) return;
+        intent.removeExtra(EXTRA_PUSH_KIND);
+        intent.removeExtra(EXTRA_PUSH_CONVERSATION_ID);
+        intent.removeExtra(EXTRA_PUSH_REQUEST_ID);
+        showWebView();
+        progress.setVisibility(View.VISIBLE);
+        webView.loadUrl(target);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handlePushIntent(intent, true);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        appForeground = true;
+    }
+
+    @Override
+    protected void onStop() {
+        appForeground = false;
+        super.onStop();
     }
 
     private void showWebView() {
@@ -189,7 +247,10 @@ public class MainActivity extends Activity {
             view.evaluateJavascript(
                 "document.documentElement.classList.add('nova-android-app');" +
                 "document.documentElement.style.setProperty('--nova-native-app','1');" +
-                "window.dispatchEvent(new CustomEvent('novaandroidready',{detail:{version:'" + BuildConfig.VERSION_NAME + "'}}));",
+                "window.dispatchEvent(new CustomEvent('novaandroidready',{detail:{version:'" + BuildConfig.VERSION_NAME + "',firebase:" + (BuildConfig.FIREBASE_CONFIGURED ? "true" : "false") + "}}));" +
+                "(function(){if(window.__novaAndroidPushWatch)return;window.__novaAndroidPushWatch=1;let last='';let lastEnabled=null;" +
+                "const sync=function(){try{const t=localStorage.getItem('nova_token')||'';const enabled=(localStorage.getItem('nova_notifications')==='1');" +
+                "if(t!==last||enabled!==lastEnabled){if(last&&(!t||t!==last||!enabled))NOVAAndroid.unregisterPushSession(last);if(t&&enabled)NOVAAndroid.registerPushSession(t);last=t;lastEnabled=enabled;}}catch(e){}};sync();setInterval(sync,1200);})();",
                 null
             );
         }
@@ -301,6 +362,9 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST) {
+            return;
+        }
         if (requestCode == STORAGE_PERMISSION_REQUEST) {
             if (pendingDownloadArgs != null && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 enqueueDownload(pendingDownloadArgs[0], pendingDownloadArgs[1], pendingDownloadArgs[2], pendingDownloadArgs[3], pendingDownloadLength);
@@ -396,6 +460,32 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public String getAppVersion() {
             return BuildConfig.VERSION_NAME;
+        }
+
+        @JavascriptInterface
+        public boolean isFirebaseConfigured() {
+            return BuildConfig.FIREBASE_CONFIGURED && PushRegistration.isFirebaseReady(MainActivity.this);
+        }
+
+        @JavascriptInterface
+        public void registerPushSession(String authToken) {
+            runOnUiThread(() -> requestNotificationPermissionIfNeeded());
+            PushRegistration.register(MainActivity.this, authToken);
+        }
+
+        @JavascriptInterface
+        public void unregisterPushSession(String authToken) {
+            PushRegistration.unregister(MainActivity.this, authToken);
+        }
+
+        @JavascriptInterface
+        public void setPushEnabled(boolean enabled, String authToken) {
+            if (enabled) {
+                runOnUiThread(() -> requestNotificationPermissionIfNeeded());
+                PushRegistration.register(MainActivity.this, authToken);
+            } else {
+                PushRegistration.unregister(MainActivity.this, authToken);
+            }
         }
 
         @JavascriptInterface
