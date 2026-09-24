@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "NOVA Android"
 include ':app'
+include ':nativeapp'
