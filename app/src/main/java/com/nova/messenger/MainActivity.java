@@ -69,6 +69,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         root = findViewById(R.id.root);
+        applySystemBarInsets();
         webView = findViewById(R.id.webView);
         progress = findViewById(R.id.progress);
         errorPanel = findViewById(R.id.errorPanel);
@@ -86,6 +87,25 @@ public class MainActivity extends Activity {
         handlePushIntent(getIntent(), savedInstanceState != null);
     }
 
+    private void applySystemBarInsets() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            root.setOnApplyWindowInsetsListener((v, insets) -> {
+                // Android 15 enforces edge-to-edge for targetSdk 35.
+                // Keep NOVA's web UI below the status bar so the chat header,
+                // back button, avatar and actions never sit under system icons.
+                int statusBarTop = Math.max(0, insets.getSystemWindowInsetTop());
+                v.setPadding(
+                    v.getPaddingLeft(),
+                    statusBarTop,
+                    v.getPaddingRight(),
+                    v.getPaddingBottom()
+                );
+                return insets;
+            });
+            root.requestApplyInsets();
+        }
+    }
+
     private void configureWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -97,7 +117,7 @@ public class MainActivity extends Activity {
         settings.setAllowContentAccess(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " NOVA-Android/1.1.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " NOVA-Android/" + BuildConfig.VERSION_NAME);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG);
