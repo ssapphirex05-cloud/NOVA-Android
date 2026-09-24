@@ -83,7 +83,13 @@ fun ChatScreen(
     onDeleteMessage: (NovaMessage) -> Unit,
     onReactMessage: (NovaMessage, String) -> Unit,
     onDraftChanged: (Boolean) -> Unit,
-    onNavigateRoot: (RootTab) -> Unit
+    onNavigateRoot: (RootTab) -> Unit,
+    wallpaperId: (Long) -> String,
+    wallpaperDim: (Long) -> Int,
+    wallpaperAtmosphere: (Long) -> String,
+    onProposeWallpaper: (String, Int, String) -> Unit,
+    onResetWallpaper: () -> Unit,
+    onRespondWallpaper: (NovaMessage, String) -> Unit
 ) {
     val conversation = state.selectedConversation ?: return
     val currentUser = state.user ?: return
@@ -95,7 +101,24 @@ fun ChatScreen(
     var showMenu by remember(conversation.id) { mutableStateOf(false) }
     var showWallpaper by remember(conversation.id) { mutableStateOf(false) }
     var showPeerProfile by remember(conversation.id) { mutableStateOf(false) }
-    var wallpaperPath by remember(conversation.id) { mutableStateOf("assets/chat-bg/midnight-grid.webp") }
+    var localWallpaperId by remember(conversation.id) {
+        mutableStateOf(wallpaperId(conversation.id))
+    }
+    var localWallpaperDim by remember(conversation.id) {
+        mutableStateOf(wallpaperDim(conversation.id))
+    }
+    var localAtmosphere by remember(conversation.id) {
+        mutableStateOf(wallpaperAtmosphere(conversation.id))
+    }
+    val sharedWallpaper = conversation.sharedWallpaper
+    val effectiveWallpaperId = sharedWallpaper?.id ?: localWallpaperId
+    val effectiveWallpaperDim = sharedWallpaper?.dim ?: localWallpaperDim
+    val effectiveAtmosphere = sharedWallpaper?.atmosphere ?: localAtmosphere
+    val wallpaperPath = when (effectiveWallpaperId) {
+        "clear" -> ""
+        "custom" -> sharedWallpaper?.url.orEmpty()
+        else -> "assets/chat-bg/" + effectiveWallpaperId + ".webp"
+    }
     val listState = rememberLazyListState()
 
     val filePicker = rememberLauncherForActivityResult(
@@ -213,12 +236,16 @@ fun ChatScreen(
                     contentDescription = "Обои чата",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    alpha = 0.48f
+                    alpha = 1f
                 )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0x52030A10))
+                        .background(
+                            Color.Black.copy(
+                                alpha = (effectiveWallpaperDim.coerceIn(0, 42) / 100f)
+                            )
+                        )
                 )
             }
 
@@ -234,6 +261,11 @@ fun ChatScreen(
                         mine = message.sender.id == currentUser.id,
                         mediaUrl = mediaUrl,
                         selected = selectedMessage?.id == message.id,
+                        bubbleSize = state.bubbleSize,
+                        bubbleTheme = state.bubbleTheme,
+                        onWallpaperResponse = { action ->
+                            onRespondWallpaper(message, action)
+                        },
                         onClick = {
                             selectedMessage = if (selectedMessage?.id == message.id) null else message
                         }
@@ -416,8 +448,27 @@ fun ChatScreen(
     if (showWallpaper) {
         WallpaperDialog(
             mediaUrl = mediaUrl,
-            current = wallpaperPath,
-            onSelect = { wallpaperPath = it },
+            currentId = effectiveWallpaperId,
+            dim = effectiveWallpaperDim,
+            atmosphere = effectiveAtmosphere,
+            shared = sharedWallpaper != null,
+            onApplyLocal = { id, nextDim, nextAtmosphere ->
+                localWallpaperId = id
+                localWallpaperDim = nextDim
+                localAtmosphere = nextAtmosphere
+            },
+            onPropose = { id, nextDim, nextAtmosphere ->
+                localWallpaperId = id
+                localWallpaperDim = nextDim
+                localAtmosphere = nextAtmosphere
+                onProposeWallpaper(id, nextDim, nextAtmosphere)
+            },
+            onReset = {
+                localWallpaperId = "midnight-grid"
+                localWallpaperDim = 10
+                localAtmosphere = "none"
+                onResetWallpaper()
+            },
             onDismiss = { showWallpaper = false }
         )
     }
@@ -437,12 +488,32 @@ private fun MessageBubble(
     mine: Boolean,
     mediaUrl: (String?) -> String?,
     selected: Boolean,
+    bubbleSize: Int,
+    bubbleTheme: String,
+    onWallpaperResponse: (String) -> Unit,
     onClick: () -> Unit
 ) {
+    val scale = (bubbleSize.coerceIn(80, 130) / 100f)
+    val radius = (18f * scale).dp
+    val tail = (6f * scale).dp
     val shape = if (mine) {
-        RoundedCornerShape(topStart = 17.dp, topEnd = 17.dp, bottomStart = 17.dp, bottomEnd = 5.dp)
+        RoundedCornerShape(topStart = radius, topEnd = radius, bottomStart = radius, bottomEnd = tail)
     } else {
-        RoundedCornerShape(topStart = 17.dp, topEnd = 17.dp, bottomStart = 5.dp, bottomEnd = 17.dp)
+        RoundedCornerShape(topStart = radius, topEnd = radius, bottomStart = tail, bottomEnd = radius)
+    }
+    val incomingBrush = when (bubbleTheme) {
+        "glass" -> Brush.verticalGradient(listOf(Color(0x8620394C), Color(0x75102637)))
+        "graphite" -> Brush.verticalGradient(listOf(Color(0xFF303943), Color(0xFF252D35)))
+        "violet" -> Brush.verticalGradient(listOf(Color(0xFF302C4D), Color(0xFF24253D)))
+        "sakura" -> Brush.verticalGradient(listOf(Color(0xFF3A2933), Color(0xFF30222B)))
+        else -> Brush.verticalGradient(listOf(Color(0xC21B2F40), Color(0xB811212F)))
+    }
+    val outgoingBrush = when (bubbleTheme) {
+        "glass" -> Brush.verticalGradient(listOf(Color(0xA82799DC), Color(0x941167A5)))
+        "graphite" -> Brush.verticalGradient(listOf(Color(0xFF334B5B), Color(0xFF263A48)))
+        "violet" -> Brush.linearGradient(listOf(Color(0xFF7658D9), Color(0xFF4B75DF)))
+        "sakura" -> Brush.linearGradient(listOf(Color(0xFFDE6A9A), Color(0xFFB84C7E)))
+        else -> Brush.verticalGradient(listOf(Color(0xFF268FD4), Color(0xFF196FB1)))
     }
 
     Row(
@@ -473,14 +544,10 @@ private fun MessageBubble(
                     .clip(shape)
                     .then(
                         if (mine) {
-                            Modifier.background(
-                                Brush.linearGradient(
-                                    listOf(Color(0xFF338FDC), Color(0xFF2878BD))
-                                )
-                            )
+                            Modifier.background(outgoingBrush)
                         } else {
                             Modifier
-                                .background(NovaPalette.PanelSolid)
+                                .background(incomingBrush)
                                 .border(1.dp, NovaPalette.Line, shape)
                         }
                     )
@@ -489,7 +556,7 @@ private fun MessageBubble(
                         else Modifier
                     )
                     .clickable(onClick = onClick)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .padding(horizontal = (12f * scale).dp, vertical = (9f * scale).dp)
             ) {
                 if (!mine && message.sender.displayName.isNotBlank()) {
                     Text(
@@ -527,9 +594,59 @@ private fun MessageBubble(
                     message.body.isNotBlank() -> Text(
                         message.body,
                         color = if (mine) Color.White else NovaPalette.Text,
-                        fontSize = 13.5.sp,
-                        lineHeight = 19.sp
+                        fontSize = (14.35f * scale).sp,
+                        lineHeight = (19.5f * scale).sp
                     )
+                }
+
+                message.wallpaperRequest?.let { request ->
+                    Spacer(Modifier.height(6.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black.copy(alpha = 0.16f))
+                            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            "Парные обои · " + request.id,
+                            color = NovaPalette.Accent2,
+                            fontSize = 10.5.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            if (request.atmosphere == "none") "Без эффекта" else "Атмосфера: " + request.atmosphere,
+                            color = if (mine) Color.White.copy(alpha = 0.7f) else NovaPalette.Muted,
+                            fontSize = 9.5.sp,
+                            modifier = Modifier.padding(top = 3.dp)
+                        )
+                        if (request.status == "pending" && !mine) {
+                            Row(
+                                modifier = Modifier.padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                            ) {
+                                WallpaperRequestButton("Принять", true) {
+                                    onWallpaperResponse("accept")
+                                }
+                                WallpaperRequestButton("Отклонить", false) {
+                                    onWallpaperResponse("decline")
+                                }
+                            }
+                        } else {
+                            Text(
+                                when (request.status) {
+                                    "accepted" -> "Принято"
+                                    "declined" -> "Отклонено"
+                                    "canceled" -> "Отменено"
+                                    else -> "Ожидает ответа"
+                                },
+                                color = NovaPalette.Muted,
+                                fontSize = 9.sp,
+                                modifier = Modifier.padding(top = 6.dp)
+                            )
+                        }
+                    }
                 }
 
                 message.attachment?.let { attachment ->
@@ -842,4 +959,41 @@ private fun chatSubtitle(state: NovaUiState): String {
 private fun formatDuration(durationMs: Long): String {
     val seconds = (durationMs / 1000L).coerceAtLeast(0L)
     return "%d:%02d".format(seconds / 60L, seconds % 60L)
+}
+
+
+@Composable
+private fun WallpaperRequestButton(
+    text: String,
+    primary: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .height(34.dp)
+            .clip(RoundedCornerShape(11.dp))
+            .then(
+                if (primary) {
+                    Modifier.background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xFF12BFF3), Color(0xFF078EDE))
+                        )
+                    )
+                } else {
+                    Modifier
+                        .background(Color(0xFF0A1A26))
+                        .border(1.dp, Color(0xFF244357), RoundedCornerShape(11.dp))
+                }
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text,
+            color = if (primary) Color.White else NovaPalette.Text,
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+    }
 }
