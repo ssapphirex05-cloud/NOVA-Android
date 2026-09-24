@@ -1,8 +1,11 @@
 package com.nova.messenger.native2.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,12 +51,14 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -71,6 +76,9 @@ import com.nova.messenger.native2.NovaMessage
 import com.nova.messenger.native2.NovaUiState
 import com.nova.messenger.native2.NovaUser
 import com.nova.messenger.native2.RootTab
+import com.nova.messenger.native2.VoiceClip
+import com.nova.messenger.native2.VoiceRecorder
+import kotlinx.coroutines.delay
 
 @Composable
 fun ChatScreen(
@@ -79,10 +87,12 @@ fun ChatScreen(
     onBack: () -> Unit,
     onSend: (String) -> Unit,
     onAttachment: (Uri) -> Unit,
+    onVoice: (VoiceClip) -> Unit,
     onEditMessage: (NovaMessage, String) -> Unit,
     onDeleteMessage: (NovaMessage) -> Unit,
     onReactMessage: (NovaMessage, String) -> Unit,
     onDraftChanged: (Boolean) -> Unit,
+    onVoiceRecordingChanged: (Boolean) -> Unit,
     onNavigateRoot: (RootTab) -> Unit,
     wallpaperId: (Long) -> String,
     wallpaperDim: (Long) -> Int,
@@ -95,11 +105,17 @@ fun ChatScreen(
 ) {
     val conversation = state.selectedConversation ?: return
     val currentUser = state.user ?: return
+    val context = LocalContext.current
+    val voiceRecorder = remember(conversation.id) {
+        VoiceRecorder(context.applicationContext)
+    }
 
     var draft by remember(conversation.id) { mutableStateOf("") }
     var showEmoji by remember(conversation.id) { mutableStateOf(false) }
     var selectedMessage by remember(conversation.id) { mutableStateOf<NovaMessage?>(null) }
     var editingMessage by remember(conversation.id) { mutableStateOf<NovaMessage?>(null) }
+    var isRecording by remember(conversation.id) { mutableStateOf(false) }
+    var recordingMs by remember(conversation.id) { mutableStateOf(0L) }
     var showMenu by remember(conversation.id) { mutableStateOf(false) }
     var showWallpaper by remember(conversation.id) { mutableStateOf(false) }
     var showPeerProfile by remember(conversation.id) { mutableStateOf(false) }
@@ -127,6 +143,49 @@ fun ChatScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) onAttachment(uri)
+    }
+
+    fun startVoiceRecording() {
+        runCatching {
+            voiceRecorder.start()
+            isRecording = true
+            recordingMs = 0L
+            onVoiceRecordingChanged(true)
+        }
+    }
+
+    val micPermission = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) startVoiceRecording()
+    }
+
+    fun finishVoiceRecording(send: Boolean) {
+        if (!isRecording) return
+        isRecording = false
+        recordingMs = 0L
+        onVoiceRecordingChanged(false)
+        if (send) {
+            voiceRecorder.stop()?.let(onVoice)
+        } else {
+            voiceRecorder.cancel()
+        }
+    }
+
+    DisposableEffect(conversation.id) {
+        onDispose {
+            if (voiceRecorder.isRecording) {
+                voiceRecorder.cancel()
+                onVoiceRecordingChanged(false)
+            }
+        }
+    }
+
+    LaunchedEffect(isRecording) {
+        while (isRecording) {
+            recordingMs = voiceRecorder.elapsedMs
+            delay(100L)
+        }
     }
 
     LaunchedEffect(state.messages.size, state.messages.lastOrNull()?.id) {
@@ -388,8 +447,14 @@ fun ChatScreen(
                 .padding(horizontal = 6.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ComposerIcon(Icons.Rounded.AttachFile, "Вложение") {
-                filePicker.launch("*/*")
+            if (isRecording) {
+                ComposerIcon(Icons.Rounded.Close, "Отменить запись") {
+                    finishVoiceRecording(false)
+                }
+            } else {
+                ComposerIcon(Icons.Rounded.AttachFile, "Вложение") {
+                    filePicker.launch("*/*")
+                }
             }
 
             BasicTextField(
@@ -407,9 +472,15 @@ fun ChatScreen(
                     Box(contentAlignment = Alignment.CenterStart) {
                         if (draft.isEmpty()) {
                             Text(
-                                if (state.busy) "Загрузка…" else "Сообщение...",
-                                color = Color(0xFF72869A),
-                                fontSize = 13.sp
+                                when {
+                                    isRecording -> "Запись " + formatDuration(recordingMs) + " · нажми микрофон для отправки"
+                                    state.busy -> "Загрузка…"
+                                    else -> "Сообщение..."
+                                },
+                                color = if (isRecording) Color(0xFFFF6D8A) else Color(0xFF72869A),
+                                fontSize = if (isRecording) 11.4.sp else 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                         inner()
@@ -440,25 +511,45 @@ fun ChatScreen(
                             )
                         }
                     )
-                    .clickable(enabled = draft.isNotBlank() && !state.busy) {
-                        val messageBeingEdited = editingMessage
-                        val text = draft
-                        draft = ""
-                        onDraftChanged(false)
-
-                        if (messageBeingEdited != null) {
-                            onEditMessage(messageBeingEdited, text)
-                            editingMessage = null
+                    .clickable(enabled = !state.busy) {
+                        if (draft.isBlank()) {
+                            if (isRecording) {
+                                finishVoiceRecording(true)
+                            } else {
+                                val granted = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.RECORD_AUDIO
+                                ) == PackageManager.PERMISSION_GRANTED
+                                if (granted) {
+                                    startVoiceRecording()
+                                } else {
+                                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            }
                         } else {
-                            onSend(text)
+                            val messageBeingEdited = editingMessage
+                            val text = draft
+                            draft = ""
+                            onDraftChanged(false)
+
+                            if (messageBeingEdited != null) {
+                                onEditMessage(messageBeingEdited, text)
+                                editingMessage = null
+                            } else {
+                                onSend(text)
+                            }
                         }
                     },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     if (draft.isBlank()) Icons.Rounded.Mic else Icons.Rounded.Send,
-                    if (draft.isBlank()) "Голосовое" else "Отправить",
-                    tint = Color.White,
+                    if (draft.isBlank()) {
+                        if (isRecording) "Отправить голосовое" else "Голосовое"
+                    } else {
+                        "Отправить"
+                    },
+                    tint = if (isRecording) Color(0xFFFFE7EC) else Color.White,
                     modifier = Modifier.size(19.dp)
                 )
             }
