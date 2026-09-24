@@ -63,7 +63,8 @@ fun NovaApp(viewModel: NovaViewModel) {
                 wallpaperAtmosphere = viewModel::wallpaperAtmosphere,
                 onProposeWallpaper = viewModel::proposeWallpaper,
                 onResetWallpaper = viewModel::resetWallpaper,
-                onRespondWallpaper = viewModel::respondWallpaper
+                onRespondWallpaper = viewModel::respondWallpaper,
+                onRemoveFriend = viewModel::removeFriend
             )
 
             state.tab == RootTab.CHATS -> ChatsScreen(
