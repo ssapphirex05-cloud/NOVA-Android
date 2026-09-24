@@ -61,6 +61,7 @@ fun NovaApp(viewModel: NovaViewModel) {
                 wallpaperId = viewModel::wallpaperId,
                 wallpaperDim = viewModel::wallpaperDim,
                 wallpaperAtmosphere = viewModel::wallpaperAtmosphere,
+                onSaveLocalWallpaper = viewModel::saveLocalWallpaper,
                 onProposeWallpaper = viewModel::proposeWallpaper,
                 onResetWallpaper = viewModel::resetWallpaper,
                 onRespondWallpaper = viewModel::respondWallpaper,
