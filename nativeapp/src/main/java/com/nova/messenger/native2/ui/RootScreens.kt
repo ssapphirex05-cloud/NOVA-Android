@@ -1,6 +1,7 @@
 package com.nova.messenger.native2.ui
 
 import android.content.Intent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.nova.messenger.native2.Conversation
+import com.nova.messenger.native2.R
 import com.nova.messenger.native2.FriendRequestItem
 import com.nova.messenger.native2.NovaUiState
 import com.nova.messenger.native2.NovaUser
@@ -1140,16 +1143,13 @@ private fun BrandHeader() {
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        Image(
+            painter = painterResource(R.drawable.nova_logo),
+            contentDescription = "NOVA",
             modifier = Modifier
-                .size(44.dp)
+                .size(46.dp)
                 .clip(RoundedCornerShape(13.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF0056FF), Color(0xFF00C7FF))))
-                .border(1.dp, Color(0xFF21D3FF), RoundedCornerShape(13.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("N", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
-        }
+        )
 
         Column(Modifier.padding(start = 13.dp)) {
             Text("N O V A", color = NovaPalette.Text, fontSize = 16.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
