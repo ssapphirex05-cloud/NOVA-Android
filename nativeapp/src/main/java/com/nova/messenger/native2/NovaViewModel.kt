@@ -389,6 +389,19 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    fun voiceRecordingChanged(active: Boolean) {
+        val conversationId = mutable.value.selectedConversation?.id ?: return
+        viewModelScope.launch {
+            runCatching {
+                repository.setTyping(
+                    conversationId,
+                    active,
+                    "voice-recording"
+                )
+            }
+        }
+    }
+
     fun draftChanged(hasText: Boolean) {
         val conversationId = mutable.value.selectedConversation?.id ?: return
         typingOffJob?.cancel()
