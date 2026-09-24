@@ -293,6 +293,33 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun sendVoice(clip: VoiceClip) {
+        val conversation = mutable.value.selectedConversation ?: return
+        if (mutable.value.busy) return
+
+        viewModelScope.launch {
+            mutable.value = mutable.value.copy(busy = true, error = null)
+            runCatching {
+                runCatching { repository.setTyping(conversation.id, true, "voice-sending") }
+                val attachment = repository.uploadVoice(clip)
+                repository.sendMessage(conversation.id, "", attachment, null)
+            }.onSuccess {
+                clip.file.delete()
+                runCatching { repository.setTyping(conversation.id, false, "voice-sending") }
+                mutable.value = mutable.value.copy(busy = false)
+                refreshMessages()
+                refreshConversations()
+            }.onFailure { error ->
+                clip.file.delete()
+                runCatching { repository.setTyping(conversation.id, false, "voice-sending") }
+                mutable.value = mutable.value.copy(
+                    busy = false,
+                    error = NovaRepository.errorMessage(error)
+                )
+            }
+        }
+    }
+
     fun uploadAndSend(uri: Uri) {
         val conversation = mutable.value.selectedConversation ?: return
         if (mutable.value.busy) return
