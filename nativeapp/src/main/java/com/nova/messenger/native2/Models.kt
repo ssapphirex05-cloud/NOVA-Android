@@ -24,16 +24,8 @@ data class NovaUser(
 
 data class AuthResponse(val token: String = "", val user: NovaUser = NovaUser())
 data class MeResponse(val user: NovaUser = NovaUser())
-
-data class ProfileUpdateBody(
-    val displayName: String,
-    val bio: String,
-    val statusText: String
-)
-data class ProfileUpdateResponse(
-    val user: NovaUser = NovaUser(),
-    val token: String = ""
-)
+data class ProfileUpdateBody(val displayName: String, val bio: String, val statusText: String)
+data class ProfileUpdateResponse(val user: NovaUser = NovaUser(), val token: String = "")
 
 data class LastMessage(
     val id: Long = 0,
@@ -61,6 +53,7 @@ data class MessageSender(
     val id: Long = 0,
     val username: String = "",
     val displayName: String = "",
+    val accent: String = "violet",
     val avatarUrl: String? = null
 )
 
@@ -115,6 +108,7 @@ data class MessagesResponse(
 )
 
 data class MessageEnvelope(val message: NovaMessage = NovaMessage())
+data class UploadResponse(val attachment: MessageAttachment = MessageAttachment())
 data class OkResponse(val ok: Boolean = true)
 data class PushResponse(val ok: Boolean = true)
 
@@ -126,6 +120,8 @@ data class SendMessageBody(
     val replyToId: Long? = null,
     val clientMessageId: String
 )
+data class EditMessageBody(val body: String)
+data class ReactionBody(val emoji: String)
 data class ReadBody(val messageId: Long)
 data class TypingBody(val active: Boolean, val mode: String = "typing")
 data class PushBody(val token: String, val deviceId: String, val appVersion: String)

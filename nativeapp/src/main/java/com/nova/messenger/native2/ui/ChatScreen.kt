@@ -1,24 +1,57 @@
 package com.nova.messenger.native2.ui
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.Call
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Send
+import androidx.compose.material.icons.rounded.SentimentSatisfiedAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -36,14 +69,27 @@ fun ChatScreen(
     mediaUrl: (String?) -> String?,
     onBack: () -> Unit,
     onSend: (String) -> Unit,
+    onAttachment: (Uri) -> Unit,
+    onEditMessage: (NovaMessage, String) -> Unit,
+    onDeleteMessage: (NovaMessage) -> Unit,
+    onReactMessage: (NovaMessage, String) -> Unit,
     onDraftChanged: (Boolean) -> Unit,
     onNavigateRoot: (RootTab) -> Unit
 ) {
     val conversation = state.selectedConversation ?: return
     val currentUser = state.user ?: return
+
     var draft by remember(conversation.id) { mutableStateOf("") }
     var showEmoji by remember(conversation.id) { mutableStateOf(false) }
+    var selectedMessage by remember(conversation.id) { mutableStateOf<NovaMessage?>(null) }
+    var editingMessage by remember(conversation.id) { mutableStateOf<NovaMessage?>(null) }
     val listState = rememberLazyListState()
+
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) onAttachment(uri)
+    }
 
     LaunchedEffect(state.messages.size, state.messages.lastOrNull()?.id) {
         if (state.messages.isNotEmpty()) {
@@ -69,11 +115,7 @@ fun ChatScreen(
             HeaderIcon(Icons.Rounded.ArrowBack, "Назад", onBack)
 
             Box {
-                NovaAvatar(
-                    conversation.peer,
-                    mediaUrl(conversation.peer?.avatarUrl),
-                    42
-                )
+                NovaAvatar(conversation.peer, mediaUrl(conversation.peer?.avatarUrl), 42)
                 if (conversation.peer?.online == true) {
                     OnlineDot(Modifier.align(Alignment.BottomEnd))
                 }
@@ -116,9 +158,35 @@ fun ChatScreen(
                 MessageBubble(
                     message = message,
                     mine = message.sender.id == currentUser.id,
-                    mediaUrl = mediaUrl
+                    mediaUrl = mediaUrl,
+                    selected = selectedMessage?.id == message.id,
+                    onClick = {
+                        selectedMessage = if (selectedMessage?.id == message.id) null else message
+                    }
                 )
             }
+        }
+
+        selectedMessage?.let { message ->
+            MessageActionBar(
+                message = message,
+                mine = message.sender.id == currentUser.id,
+                onReact = { emoji ->
+                    onReactMessage(message, emoji)
+                    selectedMessage = null
+                },
+                onEdit = {
+                    editingMessage = message
+                    draft = message.body
+                    onDraftChanged(draft.isNotBlank())
+                    selectedMessage = null
+                },
+                onDelete = {
+                    onDeleteMessage(message)
+                    selectedMessage = null
+                },
+                onClose = { selectedMessage = null }
+            )
         }
 
         if (state.typingUsers.isNotEmpty()) {
@@ -131,6 +199,39 @@ fun ChatScreen(
                     .height(20.dp)
                     .padding(horizontal = 12.dp)
             )
+        }
+
+        editingMessage?.let { message ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 9.dp, vertical = 3.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(NovaPalette.Panel2)
+                    .border(1.dp, NovaPalette.Line, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 11.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.Edit, null, tint = NovaPalette.Accent2, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Редактирование", color = NovaPalette.Accent2, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(message.body, color = NovaPalette.Muted, fontSize = 9.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Icon(
+                    Icons.Rounded.Close,
+                    "Отмена",
+                    tint = NovaPalette.Muted,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clickable {
+                            editingMessage = null
+                            draft = ""
+                            onDraftChanged(false)
+                        }
+                        .padding(5.dp)
+                )
+            }
         }
 
         if (showEmoji) {
@@ -154,7 +255,9 @@ fun ChatScreen(
                 .padding(horizontal = 6.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ComposerIcon(Icons.Rounded.AttachFile, "Вложение") { }
+            ComposerIcon(Icons.Rounded.AttachFile, "Вложение") {
+                filePicker.launch("*/*")
+            }
 
             BasicTextField(
                 value = draft,
@@ -162,10 +265,7 @@ fun ChatScreen(
                     draft = it
                     onDraftChanged(it.isNotBlank())
                 },
-                textStyle = TextStyle(
-                    color = Color(0xFFEFF7FF),
-                    fontSize = 13.sp
-                ),
+                textStyle = TextStyle(color = Color(0xFFEFF7FF), fontSize = 13.sp),
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 6.dp),
@@ -174,7 +274,7 @@ fun ChatScreen(
                     Box(contentAlignment = Alignment.CenterStart) {
                         if (draft.isEmpty()) {
                             Text(
-                                "Сообщение...",
+                                if (state.busy) "Загрузка…" else "Сообщение...",
                                 color = Color(0xFF72869A),
                                 fontSize = 13.sp
                             )
@@ -198,21 +298,23 @@ fun ChatScreen(
                         } else {
                             Modifier.background(
                                 Brush.linearGradient(
-                                    listOf(
-                                        Color(0xFF2F9CE5),
-                                        Color(0xFF2485D1)
-                                    )
+                                    listOf(Color(0xFF2F9CE5), Color(0xFF2485D1))
                                 )
                             )
                         }
                     )
-                    .clickable(
-                        enabled = draft.isNotBlank() && !state.busy
-                    ) {
+                    .clickable(enabled = draft.isNotBlank() && !state.busy) {
+                        val messageBeingEdited = editingMessage
                         val text = draft
                         draft = ""
                         onDraftChanged(false)
-                        onSend(text)
+
+                        if (messageBeingEdited != null) {
+                            onEditMessage(messageBeingEdited, text)
+                            editingMessage = null
+                        } else {
+                            onSend(text)
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -237,22 +339,14 @@ fun ChatScreen(
 private fun MessageBubble(
     message: NovaMessage,
     mine: Boolean,
-    mediaUrl: (String?) -> String?
+    mediaUrl: (String?) -> String?,
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
     val shape = if (mine) {
-        RoundedCornerShape(
-            topStart = 17.dp,
-            topEnd = 17.dp,
-            bottomStart = 17.dp,
-            bottomEnd = 5.dp
-        )
+        RoundedCornerShape(topStart = 17.dp, topEnd = 17.dp, bottomStart = 17.dp, bottomEnd = 5.dp)
     } else {
-        RoundedCornerShape(
-            topStart = 17.dp,
-            topEnd = 17.dp,
-            bottomStart = 5.dp,
-            bottomEnd = 17.dp
-        )
+        RoundedCornerShape(topStart = 17.dp, topEnd = 17.dp, bottomStart = 5.dp, bottomEnd = 17.dp)
     }
 
     Row(
@@ -285,10 +379,7 @@ private fun MessageBubble(
                         if (mine) {
                             Modifier.background(
                                 Brush.linearGradient(
-                                    listOf(
-                                        Color(0xFF338FDC),
-                                        Color(0xFF2878BD)
-                                    )
+                                    listOf(Color(0xFF338FDC), Color(0xFF2878BD))
                                 )
                             )
                         } else {
@@ -297,6 +388,11 @@ private fun MessageBubble(
                                 .border(1.dp, NovaPalette.Line, shape)
                         }
                     )
+                    .then(
+                        if (selected) Modifier.border(1.5.dp, NovaPalette.Accent2, shape)
+                        else Modifier
+                    )
+                    .clickable(onClick = onClick)
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
                 if (!mine && message.sender.displayName.isNotBlank()) {
@@ -315,48 +411,29 @@ private fun MessageBubble(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(7.dp))
                             .background(Color.Black.copy(alpha = 0.10f))
-                            .border(
-                                2.dp,
-                                NovaPalette.Accent2.copy(alpha = 0.65f),
-                                RoundedCornerShape(7.dp)
-                            )
+                            .border(2.dp, NovaPalette.Accent2.copy(alpha = 0.65f), RoundedCornerShape(7.dp))
                             .padding(horizontal = 7.dp, vertical = 5.dp)
                     ) {
-                        Text(
-                            reply.senderName,
-                            color = NovaPalette.Accent2,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            reply.body,
-                            color = NovaPalette.Text.copy(alpha = 0.82f),
-                            fontSize = 10.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Text(reply.senderName, color = NovaPalette.Accent2, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text(reply.body, color = NovaPalette.Text.copy(alpha = 0.82f), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Spacer(Modifier.height(5.dp))
                 }
 
                 when {
-                    message.deletedAt != null -> {
-                        Text(
-                            "Сообщение удалено",
-                            color = if (mine) Color.White.copy(alpha = 0.68f) else NovaPalette.Muted,
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 13.5.sp
-                        )
-                    }
+                    message.deletedAt != null -> Text(
+                        "Сообщение удалено",
+                        color = if (mine) Color.White.copy(alpha = 0.68f) else NovaPalette.Muted,
+                        fontStyle = FontStyle.Italic,
+                        fontSize = 13.5.sp
+                    )
 
-                    message.body.isNotBlank() -> {
-                        Text(
-                            message.body,
-                            color = if (mine) Color.White else NovaPalette.Text,
-                            fontSize = 13.5.sp,
-                            lineHeight = 19.sp
-                        )
-                    }
+                    message.body.isNotBlank() -> Text(
+                        message.body,
+                        color = if (mine) Color.White else NovaPalette.Text,
+                        fontSize = 13.5.sp,
+                        lineHeight = 19.sp
+                    )
                 }
 
                 message.attachment?.let { attachment ->
@@ -384,22 +461,16 @@ private fun MessageBubble(
                             fontStyle = FontStyle.Italic
                         )
                     }
-
                     Text(
                         relativeTime(message.createdAt),
                         color = if (mine) Color.White.copy(alpha = 0.64f) else NovaPalette.Muted2,
                         fontSize = 8.8.sp
                     )
-
                     if (mine) {
                         Spacer(Modifier.width(4.dp))
                         Text(
                             if (message.readByPeer) "✓✓" else "✓",
-                            color = if (message.readByPeer) {
-                                Color(0xFFDDF5FF)
-                            } else {
-                                Color.White.copy(alpha = 0.62f)
-                            },
+                            color = if (message.readByPeer) Color(0xFFDDF5FF) else Color.White.copy(alpha = 0.62f),
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -412,7 +483,7 @@ private fun MessageBubble(
                     modifier = Modifier.padding(top = 3.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    message.reactions.take(4).forEach { reaction ->
+                    message.reactions.take(5).forEach { reaction ->
                         Text(
                             reaction.emoji + " " + reaction.count,
                             color = NovaPalette.Text,
@@ -420,17 +491,76 @@ private fun MessageBubble(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(999.dp))
                                 .background(NovaPalette.Panel2)
-                                .border(
-                                    1.dp,
-                                    NovaPalette.Line,
-                                    RoundedCornerShape(999.dp)
-                                )
+                                .border(1.dp, NovaPalette.Line, RoundedCornerShape(999.dp))
+                                .clickable(onClick = onClick)
                                 .padding(horizontal = 7.dp, vertical = 3.dp)
                         )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MessageActionBar(
+    message: NovaMessage,
+    mine: Boolean,
+    onReact: (String) -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onClose: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 9.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xF10F1823))
+            .border(1.dp, NovaPalette.Line, RoundedCornerShape(16.dp))
+            .padding(horizontal = 8.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        listOf("👍", "❤️", "😂", "🔥", "👀").forEach { emoji ->
+            Text(
+                emoji,
+                fontSize = 18.sp,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .clickable { onReact(emoji) }
+                    .padding(5.dp)
+            )
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        if (mine && message.deletedAt == null) {
+            ActionIcon(Icons.Rounded.Edit, "Изменить", NovaPalette.Accent2, onEdit)
+            ActionIcon(Icons.Rounded.DeleteOutline, "Удалить", NovaPalette.Danger, onDelete)
+        }
+
+        ActionIcon(Icons.Rounded.Close, "Закрыть", NovaPalette.Muted, onClose)
+    }
+}
+
+@Composable
+private fun ActionIcon(
+    icon: ImageVector,
+    description: String,
+    tint: Color,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(NovaPalette.Panel3)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, description, tint = tint, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -456,11 +586,7 @@ private fun AttachmentCard(
                     .background(Color.White.copy(alpha = if (mine) 0.16f else 0.08f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    Icons.Rounded.PlayArrow,
-                    "Воспроизвести",
-                    tint = if (mine) Color.White else NovaPalette.Accent2
-                )
+                Icon(Icons.Rounded.PlayArrow, "Воспроизвести", tint = if (mine) Color.White else NovaPalette.Accent2)
             }
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
@@ -475,10 +601,7 @@ private fun AttachmentCard(
                                 .weight(1f)
                                 .height((5 + (index % 5) * 3).dp)
                                 .clip(RoundedCornerShape(2.dp))
-                                .background(
-                                    if (mine) Color.White.copy(alpha = 0.55f)
-                                    else NovaPalette.Accent2.copy(alpha = 0.55f)
-                                )
+                                .background(if (mine) Color.White.copy(alpha = 0.55f) else NovaPalette.Accent2.copy(alpha = 0.55f))
                         )
                     }
                 }
@@ -490,12 +613,7 @@ private fun AttachmentCard(
                 )
             }
             Spacer(Modifier.width(6.dp))
-            Text(
-                "1×",
-                color = if (mine) Color.White.copy(alpha = 0.82f) else NovaPalette.Text,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text("1×", color = if (mine) Color.White.copy(alpha = 0.82f) else NovaPalette.Text, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     } else {
         Row(
@@ -506,12 +624,7 @@ private fun AttachmentCard(
                 .padding(9.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Rounded.Description,
-                null,
-                tint = if (mine) Color.White else NovaPalette.Accent2,
-                modifier = Modifier.size(24.dp)
-            )
+            Icon(Icons.Rounded.Description, null, tint = if (mine) Color.White else NovaPalette.Accent2, modifier = Modifier.size(24.dp))
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -552,12 +665,7 @@ private fun EmojiStrip(
             .padding(8.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "Смайлики и эмоции",
-                color = NovaPalette.Text,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp
-            )
+            Text("Смайлики и эмоции", color = NovaPalette.Text, fontWeight = FontWeight.Bold, fontSize = 11.sp)
             Spacer(Modifier.weight(1f))
             Icon(
                 Icons.Rounded.Close,
@@ -573,10 +681,7 @@ private fun EmojiStrip(
         Spacer(Modifier.height(6.dp))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             emojis.chunked(8).forEach { row ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     row.forEach { emoji ->
                         Text(
                             emoji,
@@ -595,11 +700,7 @@ private fun EmojiStrip(
 }
 
 @Composable
-private fun HeaderIcon(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    description: String,
-    onClick: () -> Unit
-) {
+private fun HeaderIcon(icon: ImageVector, description: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(36.dp)
@@ -607,21 +708,12 @@ private fun HeaderIcon(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            icon,
-            description,
-            tint = NovaPalette.Muted,
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(icon, description, tint = NovaPalette.Muted, modifier = Modifier.size(20.dp))
     }
 }
 
 @Composable
-private fun ComposerIcon(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    description: String,
-    onClick: () -> Unit
-) {
+private fun ComposerIcon(icon: ImageVector, description: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .size(36.dp)
@@ -629,12 +721,7 @@ private fun ComposerIcon(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(
-            icon,
-            description,
-            tint = Color(0xFF91A6BA),
-            modifier = Modifier.size(20.dp)
-        )
+        Icon(icon, description, tint = Color(0xFF91A6BA), modifier = Modifier.size(20.dp))
     }
 }
 
@@ -658,7 +745,5 @@ private fun chatSubtitle(state: NovaUiState): String {
 
 private fun formatDuration(durationMs: Long): String {
     val seconds = (durationMs / 1000L).coerceAtLeast(0L)
-    val minutes = seconds / 60L
-    val rest = seconds % 60L
-    return "%d:%02d".format(minutes, rest)
+    return "%d:%02d".format(seconds / 60L, seconds % 60L)
 }

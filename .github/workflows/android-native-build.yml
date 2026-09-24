@@ -28,5 +28,5 @@ jobs:
         run: gradle :nativeapp:assembleDebug --stacktrace
       - uses: actions/upload-artifact@v4
         with:
-          name: NOVA-Android-Native-2.0.0-alpha1
+          name: NOVA-Android-Native-2.0.0-alpha2
           path: nativeapp/build/outputs/apk/debug/nativeapp-debug.apk

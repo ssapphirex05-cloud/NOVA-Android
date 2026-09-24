@@ -1,10 +1,13 @@
 package com.nova.messenger.native2
 
+import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Query
 
 interface NovaApi {
@@ -46,6 +49,23 @@ interface NovaApi {
         @Body body: SendMessageBody
     ): MessageEnvelope
 
+    @PATCH("api.php")
+    suspend fun editMessage(
+        @Query("route") route: String,
+        @Body body: EditMessageBody
+    ): MessageEnvelope
+
+    @DELETE("api.php")
+    suspend fun deleteMessage(
+        @Query("route") route: String
+    ): MessageEnvelope
+
+    @POST("api.php")
+    suspend fun reactMessage(
+        @Query("route") route: String,
+        @Body body: ReactionBody
+    ): MessageEnvelope
+
     @POST("api.php")
     suspend fun markRead(
         @Query("route") route: String,
@@ -63,6 +83,13 @@ interface NovaApi {
         @Query("route") route: String = "heartbeat",
         @Body body: Map<String, String> = emptyMap()
     ): OkResponse
+
+    @Multipart
+    @POST("api.php")
+    suspend fun upload(
+        @Query("route") route: String = "upload",
+        @Part file: MultipartBody.Part
+    ): UploadResponse
 
     @POST("api.php")
     suspend fun registerAndroidPush(

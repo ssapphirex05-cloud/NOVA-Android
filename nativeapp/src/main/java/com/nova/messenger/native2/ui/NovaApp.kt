@@ -52,6 +52,10 @@ fun NovaApp(viewModel: NovaViewModel) {
                 mediaUrl = viewModel::mediaUrl,
                 onBack = viewModel::closeConversation,
                 onSend = { text -> viewModel.sendMessage(text) },
+                onAttachment = viewModel::uploadAndSend,
+                onEditMessage = viewModel::editMessage,
+                onDeleteMessage = viewModel::deleteMessage,
+                onReactMessage = viewModel::reactMessage,
                 onDraftChanged = viewModel::draftChanged,
                 onNavigateRoot = viewModel::navigateRoot
             )
@@ -87,9 +91,6 @@ fun NovaApp(viewModel: NovaViewModel) {
             )
         }
 
-        SnackbarHost(
-            hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+        SnackbarHost(hostState = snackbar, modifier = Modifier.align(Alignment.BottomCenter))
     }
 }
