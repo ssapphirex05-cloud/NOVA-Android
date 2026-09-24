@@ -33,5 +33,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: NOVA-Android-v1.1.0-debug
+          name: NOVA-Android-v1.1.1-debug
           path: app/build/outputs/apk/debug/app-debug.apk
