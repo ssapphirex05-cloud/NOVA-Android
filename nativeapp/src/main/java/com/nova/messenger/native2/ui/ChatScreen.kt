@@ -476,6 +476,7 @@ fun ChatScreen(
     if (showPeerProfile) {
         PeerProfileDialog(
             peer = conversation.peer ?: NovaUser(displayName = conversation.title),
+            messages = state.messages,
             mediaUrl = mediaUrl,
             onDismiss = { showPeerProfile = false }
         )
