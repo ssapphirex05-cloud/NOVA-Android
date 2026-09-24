@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.nova.messenger.native2.NovaMessage
 import com.nova.messenger.native2.NovaUser
 
 @Composable
@@ -362,6 +363,7 @@ fun WallpaperDialog(
 @Composable
 fun PeerProfileDialog(
     peer: NovaUser,
+    messages: List<NovaMessage>,
     mediaUrl: (String?) -> String?,
     onDismiss: () -> Unit
 ) {
@@ -508,6 +510,73 @@ fun PeerProfileDialog(
                         eyebrow = "ДАТА РОЖДЕНИЯ",
                         text = peer.birthDate.ifBlank { "Не указана" }
                     )
+                }
+
+                val media = messages.mapNotNull { it.attachment }
+                    .filter { it.type.startsWith("image/") && it.url.isNotBlank() }
+                    .takeLast(14)
+                    .reversed()
+
+                if (media.isNotEmpty()) {
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 5.dp)
+                                .clip(RoundedCornerShape(19.dp))
+                                .background(Color(0xFF071A27))
+                                .border(1.dp, Color(0xFF17435B), RoundedCornerShape(19.dp))
+                                .padding(14.dp)
+                        ) {
+                            Text(
+                                "МЕДИА С ПОЛЬЗОВАТЕЛЕМ",
+                                color = NovaPalette.Accent2,
+                                fontSize = 8.8.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.6.sp
+                            )
+                            Text(
+                                media.size.toString() + " вложений",
+                                color = NovaPalette.Text,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                media.take(5).forEach { attachment ->
+                                    AsyncImage(
+                                        model = mediaUrl(attachment.previewUrl ?: attachment.url),
+                                        contentDescription = attachment.name,
+                                        modifier = Modifier
+                                            .size(68.dp)
+                                            .clip(RoundedCornerShape(12.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                if (media.size > 5) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(68.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color(0xFF112938)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            "+" + (media.size - 5),
+                                            color = Color.White,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Black
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
