@@ -146,6 +146,29 @@ class NovaRepository(private val context: Context) {
             body = WallpaperRespondBody(action)
         )
 
+    suspend fun uploadVoice(clip: VoiceClip): MessageAttachment {
+        val bytes = clip.file.readBytes()
+        if (bytes.size > 20 * 1024 * 1024) {
+            error("Максимальный размер голосового — 20 МБ")
+        }
+
+        val request = bytes.toRequestBody("audio/mp4".toMediaTypeOrNull())
+        val part = MultipartBody.Part.createFormData(
+            "file",
+            clip.file.name,
+            request
+        )
+        val uploaded = api.upload(file = part).attachment
+        return uploaded.copy(
+            name = uploaded.name.ifBlank { "Голосовое сообщение.m4a" },
+            type = uploaded.type.ifBlank { "audio/mp4" },
+            size = if (uploaded.size > 0) uploaded.size else bytes.size.toLong(),
+            voice = true,
+            durationMs = clip.durationMs,
+            waveform = clip.waveform
+        )
+    }
+
     suspend fun upload(uri: Uri): MessageAttachment {
         val resolver = context.contentResolver
         val type = resolver.getType(uri) ?: "application/octet-stream"
