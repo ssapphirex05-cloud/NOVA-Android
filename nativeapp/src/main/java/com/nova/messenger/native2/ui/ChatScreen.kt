@@ -87,6 +87,7 @@ fun ChatScreen(
     wallpaperId: (Long) -> String,
     wallpaperDim: (Long) -> Int,
     wallpaperAtmosphere: (Long) -> String,
+    onSaveLocalWallpaper: (String, Int, String) -> Unit,
     onProposeWallpaper: (String, Int, String) -> Unit,
     onResetWallpaper: () -> Unit,
     onRespondWallpaper: (NovaMessage, String) -> Unit,
@@ -481,6 +482,7 @@ fun ChatScreen(
                 localWallpaperId = id
                 localWallpaperDim = nextDim
                 localAtmosphere = nextAtmosphere
+                onSaveLocalWallpaper(id, nextDim, nextAtmosphere)
             },
             onPropose = { id, nextDim, nextAtmosphere ->
                 localWallpaperId = id
