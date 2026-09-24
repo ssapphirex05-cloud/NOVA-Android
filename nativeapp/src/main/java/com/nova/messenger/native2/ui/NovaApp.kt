@@ -87,6 +87,7 @@ fun NovaApp(viewModel: NovaViewModel) {
 
             else -> SettingsScreen(
                 state = state,
+                mediaUrl = viewModel::mediaUrl,
                 onTab = viewModel::setTab
             )
         }
