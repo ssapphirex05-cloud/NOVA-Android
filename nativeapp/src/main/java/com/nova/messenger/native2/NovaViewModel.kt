@@ -26,12 +26,22 @@ data class NovaUiState(
     val contactSearch: String = "",
     val searchUsers: List<NovaUser> = emptyList(),
     val tab: RootTab = RootTab.CHATS,
+    val compact: Boolean = false,
+    val bubbleSize: Int = 100,
+    val bubbleTheme: String = "nova",
     val error: String? = null
 )
 
 class NovaViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = NovaRepository(application)
-    private val mutable = MutableStateFlow(NovaUiState())
+    private val uiPreferences = NativeUiPreferences(application)
+    private val mutable = MutableStateFlow(
+        NovaUiState(
+            compact = uiPreferences.compact,
+            bubbleSize = uiPreferences.bubbleSize,
+            bubbleTheme = uiPreferences.bubbleTheme
+        )
+    )
     val state: StateFlow<NovaUiState> = mutable.asStateFlow()
 
     private var pollingJob: Job? = null
@@ -48,7 +58,7 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
     private fun boot() {
         viewModelScope.launch {
             if (repository.session.token.isNullOrBlank()) {
-                mutable.value = NovaUiState(booting = false)
+                mutable.value = mutable.value.copy(booting = false)
                 return@launch
             }
 
@@ -62,7 +72,15 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 .onFailure {
                     repository.clearSession()
-                    mutable.value = NovaUiState(booting = false)
+                    mutable.value = mutable.value.copy(
+                        booting = false,
+                        user = null,
+                        conversations = emptyList(),
+                        selectedConversation = null,
+                        messages = emptyList(),
+                        typingUsers = emptyList(),
+                        friends = FriendsResponse()
+                    )
                 }
         }
     }
@@ -108,13 +126,95 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
             runCatching { repository.unregisterPush() }
             pollingJob?.cancel()
             repository.clearSession()
-            mutable.value = NovaUiState(booting = false)
+            mutable.value = mutable.value.copy(
+                booting = false,
+                user = null,
+                conversations = emptyList(),
+                selectedConversation = null,
+                messages = emptyList(),
+                typingUsers = emptyList(),
+                friends = FriendsResponse()
+            )
         }
     }
 
     fun dismissError() {
         mutable.value = mutable.value.copy(error = null)
     }
+
+    fun setCompact(enabled: Boolean) {
+        uiPreferences.compact = enabled
+        mutable.value = mutable.value.copy(compact = enabled)
+    }
+
+    fun setBubbleSize(size: Int) {
+        val value = size.coerceIn(80, 130)
+        uiPreferences.bubbleSize = value
+        mutable.value = mutable.value.copy(bubbleSize = value)
+    }
+
+    fun setBubbleTheme(theme: String) {
+        val value = NativeUiPreferences.normalizeBubbleTheme(theme)
+        uiPreferences.bubbleTheme = value
+        mutable.value = mutable.value.copy(bubbleTheme = value)
+    }
+
+    fun proposeWallpaper(id: String, dim: Int, atmosphere: String) {
+        val conversation = mutable.value.selectedConversation ?: return
+        uiPreferences.saveWallpaper(conversation.id, id, dim, atmosphere)
+        viewModelScope.launch {
+            runCatching {
+                repository.proposeWallpaper(
+                    conversationId = conversation.id,
+                    id = id,
+                    dim = dim,
+                    atmosphere = atmosphere
+                )
+            }.onSuccess {
+                refreshMessages()
+                refreshConversationsNow()
+            }.onFailure {
+                mutable.value = mutable.value.copy(error = NovaRepository.errorMessage(it))
+            }
+        }
+    }
+
+    fun resetWallpaper() {
+        val conversation = mutable.value.selectedConversation ?: return
+        uiPreferences.clearWallpaper(conversation.id)
+        viewModelScope.launch {
+            runCatching { repository.resetSharedWallpaper(conversation.id) }
+                .onSuccess {
+                    refreshMessages()
+                    refreshConversationsNow()
+                }
+                .onFailure {
+                    mutable.value = mutable.value.copy(error = NovaRepository.errorMessage(it))
+                }
+        }
+    }
+
+    fun respondWallpaper(message: NovaMessage, action: String) {
+        viewModelScope.launch {
+            runCatching { repository.respondWallpaper(message.id, action) }
+                .onSuccess {
+                    refreshMessages()
+                    refreshConversationsNow()
+                }
+                .onFailure {
+                    mutable.value = mutable.value.copy(error = NovaRepository.errorMessage(it))
+                }
+        }
+    }
+
+    fun wallpaperId(conversationId: Long): String =
+        uiPreferences.wallpaperId(conversationId)
+
+    fun wallpaperDim(conversationId: Long): Int =
+        uiPreferences.wallpaperDim(conversationId)
+
+    fun wallpaperAtmosphere(conversationId: Long): String =
+        uiPreferences.wallpaperAtmosphere(conversationId)
 
     fun setTab(tab: RootTab) {
         mutable.value = mutable.value.copy(tab = tab)
