@@ -42,6 +42,8 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.ToggleOff
 import androidx.compose.material.icons.rounded.ToggleOn
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -509,18 +511,32 @@ fun ProfileScreen(
 fun SettingsScreen(
     state: NovaUiState,
     mediaUrl: (String?) -> String?,
+    onCompactChanged: (Boolean) -> Unit,
+    onBubbleSizeChanged: (Int) -> Unit,
+    onBubbleThemeChanged: (String) -> Unit,
     onTab: (RootTab) -> Unit
 ) {
     val user = state.user
     var section by remember { mutableIntStateOf(0) }
-    var compact by remember { mutableStateOf(false) }
+    var bubbleSlider by remember(state.bubbleSize) {
+        mutableStateOf(state.bubbleSize.toFloat())
+    }
 
     Column(modifier = Modifier.fillMaxSize().background(NovaPalette.Bg2)) {
-        ModalHeader(eyebrow = "SETTINGS", title = "Настройки", onClose = { onTab(RootTab.CHATS) })
+        ModalHeader(
+            eyebrow = "SETTINGS",
+            title = "Настройки",
+            onClose = { onTab(RootTab.CHATS) }
+        )
 
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(start = 13.dp, end = 13.dp, top = 12.dp, bottom = 16.dp),
+            contentPadding = PaddingValues(
+                start = 13.dp,
+                end = 13.dp,
+                top = 12.dp,
+                bottom = 16.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -529,30 +545,65 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .height(96.dp)
                         .clip(RoundedCornerShape(22.dp))
-                        .background(Brush.linearGradient(listOf(Color(0xFF092330), Color(0xFF0A1823))))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFF092330), Color(0xFF0A1823))
+                            )
+                        )
                         .border(1.dp, Color(0xFF155068), RoundedCornerShape(22.dp))
                         .clickable { onTab(RootTab.PROFILE) }
                         .padding(horizontal = 18.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    NovaAvatar(user = user, imageUrl = mediaUrl(user?.avatarUrl), size = 58)
+                    NovaAvatar(
+                        user = user,
+                        imageUrl = mediaUrl(user?.avatarUrl),
+                        size = 58
+                    )
                     Spacer(Modifier.width(16.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(user?.displayName ?: "NOVA", color = NovaPalette.Text, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("@" + user?.username.orEmpty(), color = NovaPalette.Accent2, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
-                        Text("Аккаунт и параметры NOVA", color = NovaPalette.Muted, fontSize = 10.5.sp, modifier = Modifier.padding(top = 5.dp))
+                        Text(
+                            user?.displayName ?: "NOVA",
+                            color = NovaPalette.Text,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            "@" + user?.username.orEmpty(),
+                            color = NovaPalette.Accent2,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                        Text(
+                            "Аккаунт и параметры NOVA",
+                            color = NovaPalette.Muted,
+                            fontSize = 10.5.sp,
+                            modifier = Modifier.padding(top = 5.dp)
+                        )
                     }
                     Box(
-                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF07324A)),
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFF07324A)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Rounded.Edit, contentDescription = null, tint = NovaPalette.Accent2, modifier = Modifier.size(21.dp))
+                        Icon(
+                            Icons.Rounded.Edit,
+                            contentDescription = null,
+                            tint = NovaPalette.Accent2,
+                            modifier = Modifier.size(21.dp)
+                        )
                     }
                 }
             }
 
             item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
                     SettingsTab("Вид", section == 0, Modifier.weight(0.8f)) { section = 0 }
                     SettingsTab("Чаты", section == 1, Modifier.weight(0.9f)) { section = 1 }
                     SettingsTab("Приватность", section == 2, Modifier.weight(1.45f)) { section = 2 }
@@ -578,10 +629,18 @@ fun SettingsScreen(
                                 subtitle = "NOVA Dark",
                                 trailing = {
                                     Box(
-                                        Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(Color(0xFF142434)),
+                                        Modifier
+                                            .size(34.dp)
+                                            .clip(RoundedCornerShape(11.dp))
+                                            .background(Color(0xFF142434)),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(Icons.Rounded.DarkMode, contentDescription = null, tint = Color(0xFF8EA1B6), modifier = Modifier.size(19.dp))
+                                        Icon(
+                                            Icons.Rounded.DarkMode,
+                                            contentDescription = null,
+                                            tint = Color(0xFF8EA1B6),
+                                            modifier = Modifier.size(19.dp)
+                                        )
                                     }
                                 }
                             )
@@ -593,10 +652,14 @@ fun SettingsScreen(
                                 subtitle = "Более плотный список чатов и сообщений",
                                 trailing = {
                                     Icon(
-                                        if (compact) Icons.Rounded.ToggleOn else Icons.Rounded.ToggleOff,
+                                        if (state.compact) Icons.Rounded.ToggleOn else Icons.Rounded.ToggleOff,
                                         contentDescription = null,
-                                        tint = if (compact) NovaPalette.Accent2 else Color(0xFF365269),
-                                        modifier = Modifier.size(42.dp).clickable { compact = !compact }
+                                        tint = if (state.compact) NovaPalette.Accent2 else Color(0xFF365269),
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .clickable {
+                                                onCompactChanged(!state.compact)
+                                            }
                                     )
                                 }
                             )
@@ -605,64 +668,464 @@ fun SettingsScreen(
 
                     item {
                         Column {
-                            Text("Фон и сообщения", color = NovaPalette.Text, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 4.dp))
-                            Text("Тот же полноценный предпросмотр, что и на ПК.", color = NovaPalette.Muted, fontSize = 10.5.sp, modifier = Modifier.padding(start = 4.dp, top = 4.dp))
+                            Text(
+                                "Фон и сообщения",
+                                color = NovaPalette.Text,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
+                            Text(
+                                "Тот же полноценный предпросмотр, что и на ПК.",
+                                color = NovaPalette.Muted,
+                                fontSize = 10.5.sp,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            )
                         }
                     }
 
                     item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(165.dp)
-                                .clip(RoundedCornerShape(22.dp))
-                                .background(Brush.verticalGradient(listOf(Color(0xFF082235), Color(0xFF071927))))
-                                .border(1.dp, Color(0xFF13506A), RoundedCornerShape(22.dp))
-                                .padding(12.dp)
-                        ) {
-                            Text(
-                                "Сегодня",
-                                color = NovaPalette.Muted,
-                                fontSize = 9.sp,
-                                modifier = Modifier.align(Alignment.TopCenter).clip(RoundedCornerShape(999.dp))
-                                    .background(Color(0xFF0B2537)).padding(horizontal = 11.dp, vertical = 5.dp)
-                            )
+                        ChatStylePreview(
+                            bubbleTheme = state.bubbleTheme,
+                            bubbleSize = state.bubbleSize
+                        )
+                    }
 
-                            Row(
-                                modifier = Modifier
-                                    .align(Alignment.BottomStart)
-                                    .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomEnd = 14.dp, bottomStart = 5.dp))
-                                    .background(Color(0xFF242B4C))
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("Привет!", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.width(8.dp))
-                                Text("14:55", color = Color.White.copy(alpha = 0.65f), fontSize = 8.5.sp)
+                    item {
+                        BubbleSizePanel(
+                            value = bubbleSlider,
+                            onValueChange = {
+                                bubbleSlider = it
+                                onBubbleSizeChanged(it.toInt())
+                            },
+                            onPreset = {
+                                bubbleSlider = it.toFloat()
+                                onBubbleSizeChanged(it)
                             }
-                        }
+                        )
+                    }
+
+                    item {
+                        BubbleThemePanel(
+                            selected = state.bubbleTheme,
+                            onSelect = onBubbleThemeChanged
+                        )
                     }
                 }
 
                 1 -> {
                     item { SectionLabel("ЧАТЫ") }
-                    item { SettingsInfoPanel("Сообщения и медиа", "Здесь будут плотность пузырей, автозагрузка медиа и параметры голосовых.") }
+                    item {
+                        SettingsInfoPanel(
+                            "Сообщения и медиа",
+                            "Размер и тема пузырьков уже применяются сразу во всех нативных диалогах."
+                        )
+                    }
                 }
 
                 2 -> {
                     item { SectionLabel("ПРИВАТНОСТЬ") }
-                    item { SettingsInfoPanel("Приватность", "Кто видит онлайн, время последнего посещения и кто может добавлять в контакты.") }
+                    item {
+                        SettingsInfoPanel(
+                            "Приватность",
+                            "Кто видит онлайн, время последнего посещения и кто может добавлять в контакты."
+                        )
+                    }
                 }
 
                 else -> {
                     item { SectionLabel("СИСТЕМА") }
-                    item { SettingsInfoPanel("NOVA Native", "Android 2.0.0 alpha · общий backend с веб-NOVA.") }
-                    item { SettingsInfoPanel("Уведомления", "FCM используется для фоновой доставки сообщений.") }
+                    item {
+                        SettingsInfoPanel(
+                            "NOVA Native",
+                            "Android 2.0.0 alpha · общий backend с веб-NOVA."
+                        )
+                    }
+                    item {
+                        SettingsInfoPanel(
+                            "Уведомления",
+                            "FCM используется для фоновой доставки сообщений."
+                        )
+                    }
                 }
             }
         }
 
-        BottomNav(active = RootTab.SETTINGS, incomingCount = state.friends.incomingCount, onTab = onTab)
+        BottomNav(
+            active = RootTab.SETTINGS,
+            incomingCount = state.friends.incomingCount,
+            onTab = onTab
+        )
+    }
+}
+
+@Composable
+private fun ChatStylePreview(
+    bubbleTheme: String,
+    bubbleSize: Int
+) {
+    val scale = bubbleSize.coerceIn(80, 130) / 100f
+    val mine = when (bubbleTheme) {
+        "glass" -> Brush.verticalGradient(listOf(Color(0xA82799DC), Color(0x941167A5)))
+        "graphite" -> Brush.verticalGradient(listOf(Color(0xFF334B5B), Color(0xFF263A48)))
+        "violet" -> Brush.linearGradient(listOf(Color(0xFF7658D9), Color(0xFF4B75DF)))
+        "sakura" -> Brush.linearGradient(listOf(Color(0xFFDE6A9A), Color(0xFFB84C7E)))
+        else -> Brush.verticalGradient(listOf(Color(0xFF268FD4), Color(0xFF196FB1)))
+    }
+    val theirs = when (bubbleTheme) {
+        "graphite" -> Brush.verticalGradient(listOf(Color(0xFF303943), Color(0xFF252D35)))
+        "violet" -> Brush.verticalGradient(listOf(Color(0xFF302C4D), Color(0xFF24253D)))
+        "sakura" -> Brush.verticalGradient(listOf(Color(0xFF3A2933), Color(0xFF30222B)))
+        else -> Brush.verticalGradient(listOf(Color(0xC21B2F40), Color(0xB811212F)))
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(170.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFF082235), Color(0xFF071927))
+                )
+            )
+            .border(1.dp, Color(0xFF13506A), RoundedCornerShape(22.dp))
+            .padding(12.dp)
+    ) {
+        Text(
+            "Сегодня",
+            color = NovaPalette.Muted,
+            fontSize = 9.sp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .clip(RoundedCornerShape(999.dp))
+                .background(Color(0xFF0B2537))
+                .padding(horizontal = 11.dp, vertical = 5.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .clip(RoundedCornerShape(14.dp))
+                .background(theirs)
+                .padding(
+                    horizontal = (10f * scale).dp,
+                    vertical = (8f * scale).dp
+                )
+        ) {
+            Text(
+                "Привет!",
+                color = Color.White,
+                fontSize = (11.6f * scale).sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "14:55",
+                color = Color.White.copy(alpha = 0.65f),
+                fontSize = (8.6f * scale).sp
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .clip(RoundedCornerShape(14.dp))
+                .background(mine)
+                .padding(
+                    horizontal = (10f * scale).dp,
+                    vertical = (8f * scale).dp
+                )
+        ) {
+            Text(
+                "Всё отлично, работаю",
+                color = Color.White,
+                fontSize = (11.6f * scale).sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "14:57 ✓✓",
+                color = Color.White.copy(alpha = 0.72f),
+                fontSize = (8.6f * scale).sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun BubbleSizePanel(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    onPreset: (Int) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF071923))
+            .border(1.dp, Color(0xFF173B50), RoundedCornerShape(20.dp))
+            .padding(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "СООБЩЕНИЯ",
+                    color = NovaPalette.Accent2,
+                    fontSize = 8.8.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.6.sp
+                )
+                Text(
+                    "Размер пузырьков",
+                    color = NovaPalette.Text,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+                Text(
+                    "Размер меняется сразу и в предпросмотре, и во всех чатах.",
+                    color = NovaPalette.Muted,
+                    fontSize = 9.7.sp,
+                    lineHeight = 14.sp,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .width(72.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Color(0xFF082E44))
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        value.toInt().toString() + "%",
+                        color = NovaPalette.Text,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        when {
+                            value < 93 -> "Компакт"
+                            value < 108 -> "Стандарт"
+                            value < 123 -> "Крупные"
+                            else -> "Максимум"
+                        },
+                        color = NovaPalette.Accent2,
+                        fontSize = 8.8.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            listOf(
+                85 to "Компактные",
+                100 to "Стандарт",
+                115 to "Крупные",
+                130 to "Максимум"
+            ).forEach { (size, label) ->
+                val active = kotlin.math.abs(value - size) <= 3f
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (active) {
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFF278FD2), Color(0xFF1C6FB0))
+                                )
+                            } else {
+                                Brush.verticalGradient(
+                                    listOf(Color(0xFF102738), Color(0xFF102738))
+                                )
+                            }
+                        )
+                        .clickable { onPreset(size) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label,
+                        color = if (active) Color.White else Color(0xFF91A9BB),
+                        fontSize = 8.7.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("A", color = NovaPalette.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Slider(
+                value = value,
+                onValueChange = onValueChange,
+                valueRange = 80f..130f,
+                colors = SliderDefaults.colors(
+                    thumbColor = Color(0xFFE9ECEF),
+                    activeTrackColor = NovaPalette.Accent,
+                    inactiveTrackColor = Color(0xFF332F39)
+                ),
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
+            )
+            Text("A", color = NovaPalette.Text, fontSize = 18.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun BubbleThemePanel(
+    selected: String,
+    onSelect: (String) -> Unit
+) {
+    val themes = listOf(
+        Triple("nova", "NOVA", "Фирменный синий"),
+        Triple("glass", "Glass", "Прозрачное стекло"),
+        Triple("graphite", "Graphite", "Графитовый"),
+        Triple("violet", "Violet", "Фиолетовый"),
+        Triple("sakura", "Sakura", "Розовый")
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF071923))
+            .border(1.dp, Color(0xFF173B50), RoundedCornerShape(20.dp))
+            .padding(14.dp)
+    ) {
+        Text(
+            "СТИЛЬ",
+            color = NovaPalette.Accent2,
+            fontSize = 8.8.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 1.6.sp
+        )
+        Text(
+            "Тема пузырьков",
+            color = NovaPalette.Text,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+        Text(
+            "Оформление сообщений меняется сразу и остаётся только на этом устройстве.",
+            color = NovaPalette.Muted,
+            fontSize = 9.7.sp,
+            lineHeight = 14.sp,
+            modifier = Modifier.padding(top = 6.dp, bottom = 12.dp)
+        )
+
+        themes.chunked(2).forEach { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                row.forEach { (id, name, subtitle) ->
+                    BubbleThemeCard(
+                        id = id,
+                        name = name,
+                        subtitle = subtitle,
+                        active = selected == id,
+                        modifier = Modifier.weight(1f),
+                        onClick = { onSelect(id) }
+                    )
+                }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun BubbleThemeCard(
+    id: String,
+    name: String,
+    subtitle: String,
+    active: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    val mine = when (id) {
+        "glass" -> Brush.verticalGradient(listOf(Color(0xA82799DC), Color(0x941167A5)))
+        "graphite" -> Brush.verticalGradient(listOf(Color(0xFF334B5B), Color(0xFF263A48)))
+        "violet" -> Brush.linearGradient(listOf(Color(0xFF7658D9), Color(0xFF4B75DF)))
+        "sakura" -> Brush.linearGradient(listOf(Color(0xFFDE6A9A), Color(0xFFB84C7E)))
+        else -> Brush.verticalGradient(listOf(Color(0xFF268FD4), Color(0xFF196FB1)))
+    }
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(15.dp))
+            .background(if (active) Color(0xFF0A2C40) else Color(0xFF06141F))
+            .border(
+                1.dp,
+                if (active) Color(0xFF14AEEB) else Color(0xFF173144),
+                RoundedCornerShape(15.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(58.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color(0xFF06121E), Color(0xFF081D2B))
+                    )
+                )
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.TopStart)
+                    .padding(9.dp)
+                    .width(70.dp)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF253442))
+            )
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(9.dp)
+                    .width(82.dp)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(mine)
+            )
+        }
+
+        Text(
+            name,
+            color = NovaPalette.Text,
+            fontSize = 10.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Text(
+            subtitle,
+            color = NovaPalette.Muted,
+            fontSize = 8.2.sp,
+            modifier = Modifier.padding(top = 2.dp)
+        )
     }
 }
 
