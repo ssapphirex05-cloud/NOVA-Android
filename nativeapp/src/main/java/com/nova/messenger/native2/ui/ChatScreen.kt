@@ -35,9 +35,16 @@ import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Wallpaper
+import androidx.compose.material.icons.rounded.PersonOutline
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.SentimentSatisfiedAlt
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,6 +59,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +92,10 @@ fun ChatScreen(
     var showEmoji by remember(conversation.id) { mutableStateOf(false) }
     var selectedMessage by remember(conversation.id) { mutableStateOf<NovaMessage?>(null) }
     var editingMessage by remember(conversation.id) { mutableStateOf<NovaMessage?>(null) }
+    var showMenu by remember(conversation.id) { mutableStateOf(false) }
+    var showWallpaper by remember(conversation.id) { mutableStateOf(false) }
+    var showPeerProfile by remember(conversation.id) { mutableStateOf(false) }
+    var wallpaperPath by remember(conversation.id) { mutableStateOf("assets/chat-bg/midnight-grid.webp") }
     val listState = rememberLazyListState()
 
     val filePicker = rememberLauncherForActivityResult(
@@ -144,26 +157,88 @@ fun ChatScreen(
                 )
             }
 
+            HeaderIcon(Icons.Rounded.Search, "Поиск") { }
             HeaderIcon(Icons.Rounded.Call, "Звонок") { }
-            HeaderIcon(Icons.Rounded.MoreVert, "Меню") { }
+            Box {
+                HeaderIcon(Icons.Rounded.MoreVert, "Меню") { showMenu = true }
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    modifier = Modifier.background(Color(0xFF0B1A25))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Профиль собеседника", color = NovaPalette.Text) },
+                        leadingIcon = { Icon(Icons.Rounded.PersonOutline, null, tint = NovaPalette.Accent2) },
+                        onClick = {
+                            showMenu = false
+                            showPeerProfile = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Поиск в переписке", color = NovaPalette.Text) },
+                        leadingIcon = { Icon(Icons.Rounded.Search, null, tint = NovaPalette.Muted) },
+                        onClick = { showMenu = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Обои чата", color = NovaPalette.Text) },
+                        leadingIcon = { Icon(Icons.Rounded.Wallpaper, null, tint = NovaPalette.Accent2) },
+                        onClick = {
+                            showMenu = false
+                            showWallpaper = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Обновить диалог", color = NovaPalette.Text) },
+                        leadingIcon = { Icon(Icons.Rounded.Refresh, null, tint = NovaPalette.Muted) },
+                        onClick = { showMenu = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Заблокировать пользователя", color = NovaPalette.Danger) },
+                        leadingIcon = { Icon(Icons.Rounded.Block, null, tint = NovaPalette.Danger) },
+                        onClick = { showMenu = false }
+                    )
+                }
+            }
         }
 
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 9.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(Color(0xFF07121D))
         ) {
-            items(state.messages, key = { it.id }) { message ->
-                MessageBubble(
-                    message = message,
-                    mine = message.sender.id == currentUser.id,
-                    mediaUrl = mediaUrl,
-                    selected = selectedMessage?.id == message.id,
-                    onClick = {
-                        selectedMessage = if (selectedMessage?.id == message.id) null else message
-                    }
+            if (wallpaperPath.isNotBlank()) {
+                AsyncImage(
+                    model = mediaUrl(wallpaperPath),
+                    contentDescription = "Обои чата",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = 0.48f
                 )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0x52030A10))
+                )
+            }
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 9.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                items(state.messages, key = { it.id }) { message ->
+                    MessageBubble(
+                        message = message,
+                        mine = message.sender.id == currentUser.id,
+                        mediaUrl = mediaUrl,
+                        selected = selectedMessage?.id == message.id,
+                        onClick = {
+                            selectedMessage = if (selectedMessage?.id == message.id) null else message
+                        }
+                    )
+                }
             }
         }
 
@@ -294,7 +369,11 @@ fun ChatScreen(
                     .clip(RoundedCornerShape(14.dp))
                     .then(
                         if (draft.isBlank()) {
-                            Modifier.background(NovaPalette.Panel3)
+                            Modifier.background(
+                                Brush.linearGradient(
+                                    listOf(Color(0xFF0FA7E9), Color(0xFF0C7CC6))
+                                )
+                            )
                         } else {
                             Modifier.background(
                                 Brush.linearGradient(
@@ -321,7 +400,7 @@ fun ChatScreen(
                 Icon(
                     if (draft.isBlank()) Icons.Rounded.Mic else Icons.Rounded.Send,
                     if (draft.isBlank()) "Голосовое" else "Отправить",
-                    tint = if (draft.isBlank()) NovaPalette.Muted else Color.White,
+                    tint = Color.White,
                     modifier = Modifier.size(19.dp)
                 )
             }
@@ -331,6 +410,23 @@ fun ChatScreen(
             active = RootTab.CHATS,
             incomingCount = state.friends.incomingCount,
             onTab = onNavigateRoot
+        )
+    }
+
+    if (showWallpaper) {
+        WallpaperDialog(
+            mediaUrl = mediaUrl,
+            current = wallpaperPath,
+            onSelect = { wallpaperPath = it },
+            onDismiss = { showWallpaper = false }
+        )
+    }
+
+    if (showPeerProfile) {
+        PeerProfileDialog(
+            peer = conversation.peer ?: NovaUser(displayName = conversation.title),
+            mediaUrl = mediaUrl,
+            onDismiss = { showPeerProfile = false }
         )
     }
 }
