@@ -57,7 +57,13 @@ fun NovaApp(viewModel: NovaViewModel) {
                 onDeleteMessage = viewModel::deleteMessage,
                 onReactMessage = viewModel::reactMessage,
                 onDraftChanged = viewModel::draftChanged,
-                onNavigateRoot = viewModel::navigateRoot
+                onNavigateRoot = viewModel::navigateRoot,
+                wallpaperId = viewModel::wallpaperId,
+                wallpaperDim = viewModel::wallpaperDim,
+                wallpaperAtmosphere = viewModel::wallpaperAtmosphere,
+                onProposeWallpaper = viewModel::proposeWallpaper,
+                onResetWallpaper = viewModel::resetWallpaper,
+                onRespondWallpaper = viewModel::respondWallpaper
             )
 
             state.tab == RootTab.CHATS -> ChatsScreen(
@@ -88,6 +94,9 @@ fun NovaApp(viewModel: NovaViewModel) {
             else -> SettingsScreen(
                 state = state,
                 mediaUrl = viewModel::mediaUrl,
+                onCompactChanged = viewModel::setCompact,
+                onBubbleSizeChanged = viewModel::setBubbleSize,
+                onBubbleThemeChanged = viewModel::setBubbleTheme,
                 onTab = viewModel::setTab
             )
         }
