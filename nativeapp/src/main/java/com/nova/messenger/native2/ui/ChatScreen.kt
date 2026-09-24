@@ -89,7 +89,8 @@ fun ChatScreen(
     wallpaperAtmosphere: (Long) -> String,
     onProposeWallpaper: (String, Int, String) -> Unit,
     onResetWallpaper: () -> Unit,
-    onRespondWallpaper: (NovaMessage, String) -> Unit
+    onRespondWallpaper: (NovaMessage, String) -> Unit,
+    onRemoveFriend: (NovaUser) -> Unit
 ) {
     val conversation = state.selectedConversation ?: return
     val currentUser = state.user ?: return
@@ -187,37 +188,61 @@ fun ChatScreen(
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
-                    modifier = Modifier.background(Color(0xFF0B1A25))
+                    modifier = Modifier
+                        .width(286.dp)
+                        .background(Color(0xFF0A1A25))
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Профиль собеседника", color = NovaPalette.Text) },
-                        leadingIcon = { Icon(Icons.Rounded.PersonOutline, null, tint = NovaPalette.Accent2) },
+                        text = {
+                            Text(
+                                "Профиль собеседника",
+                                color = NovaPalette.Text,
+                                fontSize = 14.sp
+                            )
+                        },
                         onClick = {
                             showMenu = false
                             showPeerProfile = true
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Поиск в переписке", color = NovaPalette.Text) },
-                        leadingIcon = { Icon(Icons.Rounded.Search, null, tint = NovaPalette.Muted) },
+                        text = { Text("Поиск в переписке", color = NovaPalette.Text, fontSize = 14.sp) },
                         onClick = { showMenu = false }
                     )
                     DropdownMenuItem(
-                        text = { Text("Обои чата", color = NovaPalette.Text) },
-                        leadingIcon = { Icon(Icons.Rounded.Wallpaper, null, tint = NovaPalette.Accent2) },
+                        text = { Text("Обои чата", color = NovaPalette.Text, fontSize = 14.sp) },
                         onClick = {
                             showMenu = false
                             showWallpaper = true
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Обновить диалог", color = NovaPalette.Text) },
-                        leadingIcon = { Icon(Icons.Rounded.Refresh, null, tint = NovaPalette.Muted) },
+                        text = { Text("Обновить диалог", color = NovaPalette.Text, fontSize = 14.sp) },
                         onClick = { showMenu = false }
                     )
+                    if (conversation.peer != null && conversation.peer.relation == "friend") {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    "Удалить из контактов",
+                                    color = Color(0xFFFFA94D),
+                                    fontSize = 14.sp
+                                )
+                            },
+                            onClick = {
+                                showMenu = false
+                                onRemoveFriend(conversation.peer)
+                            }
+                        )
+                    }
                     DropdownMenuItem(
-                        text = { Text("Заблокировать пользователя", color = NovaPalette.Danger) },
-                        leadingIcon = { Icon(Icons.Rounded.Block, null, tint = NovaPalette.Danger) },
+                        text = {
+                            Text(
+                                "Заблокировать пользователя",
+                                color = Color(0xFFFF5C83),
+                                fontSize = 14.sp
+                            )
+                        },
                         onClick = { showMenu = false }
                     )
                 }
