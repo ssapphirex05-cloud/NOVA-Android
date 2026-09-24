@@ -14,7 +14,7 @@ android {
         versionName '1.0.0'
 
         // Current NOVA host. Change this one value if the web address changes.
-        buildConfigField 'String', 'NOVA_URL', '"https://9yy8ob5y94yx.mjtest.ru/"'
+        buildConfigField 'String', 'NOVA_URL', '"https://246830.9yy8ob5y94yx.mjtest.ru/nova_messenger_v1/"'
     }
 
     buildFeatures {
