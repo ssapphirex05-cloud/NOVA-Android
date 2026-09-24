@@ -17,8 +17,8 @@ android {
         applicationId 'com.nova.messenger'
         minSdk 26
         targetSdk 35
-        versionCode 20002
-        versionName '2.0.0-alpha2'
+        versionCode 20003
+        versionName '2.0.0-alpha3'
         buildConfigField 'String', 'NOVA_URL', '"https://246830.9yy8ob5y94yx.mjtest.ru/nova_messenger_v1/"'
         buildConfigField 'boolean', 'FIREBASE_CONFIGURED', firebaseConfigPresent ? 'true' : 'false'
     }
