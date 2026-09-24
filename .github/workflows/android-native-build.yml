@@ -5,6 +5,10 @@ on:
   push:
     branches: [ native-2.0 ]
 
+concurrency:
+  group: nova-native-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-native:
     runs-on: ubuntu-latest
