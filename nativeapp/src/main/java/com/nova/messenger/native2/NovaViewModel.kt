@@ -159,6 +159,11 @@ class NovaViewModel(application: Application) : AndroidViewModel(application) {
         mutable.value = mutable.value.copy(bubbleTheme = value)
     }
 
+    fun saveLocalWallpaper(id: String, dim: Int, atmosphere: String) {
+        val conversation = mutable.value.selectedConversation ?: return
+        uiPreferences.saveWallpaper(conversation.id, id, dim, atmosphere)
+    }
+
     fun proposeWallpaper(id: String, dim: Int, atmosphere: String) {
         val conversation = mutable.value.selectedConversation ?: return
         uiPreferences.saveWallpaper(conversation.id, id, dim, atmosphere)
