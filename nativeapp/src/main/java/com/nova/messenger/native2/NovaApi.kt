@@ -92,6 +92,24 @@ interface NovaApi {
     ): UploadResponse
 
     @POST("api.php")
+    suspend fun proposeWallpaper(
+        @Query("route") route: String,
+        @Body body: WallpaperProposalBody
+    ): WallpaperActionResponse
+
+    @PATCH("api.php")
+    suspend fun resetSharedWallpaper(
+        @Query("route") route: String,
+        @Body body: WallpaperResetBody = WallpaperResetBody()
+    ): WallpaperActionResponse
+
+    @POST("api.php")
+    suspend fun respondWallpaper(
+        @Query("route") route: String,
+        @Body body: WallpaperRespondBody
+    ): WallpaperActionResponse
+
+    @POST("api.php")
     suspend fun registerAndroidPush(
         @Query("route") route: String = "push/android/subscribe",
         @Body body: PushBody

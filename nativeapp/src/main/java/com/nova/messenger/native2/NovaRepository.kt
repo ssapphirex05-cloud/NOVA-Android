@@ -121,6 +121,31 @@ class NovaRepository(private val context: Context) {
             body = ReactionBody(emoji)
         ).message
 
+    suspend fun proposeWallpaper(
+        conversationId: Long,
+        id: String,
+        dim: Int,
+        atmosphere: String
+    ): NovaMessage? = api.proposeWallpaper(
+        route = "conversations/" + conversationId + "/wallpaper-request",
+        body = WallpaperProposalBody(
+            id = id,
+            dim = dim.coerceIn(0, 42),
+            atmosphere = atmosphere
+        )
+    ).message
+
+    suspend fun resetSharedWallpaper(conversationId: Long): WallpaperConfig? =
+        api.resetSharedWallpaper(
+            route = "conversations/" + conversationId + "/wallpaper"
+        ).sharedWallpaper
+
+    suspend fun respondWallpaper(messageId: Long, action: String): WallpaperActionResponse =
+        api.respondWallpaper(
+            route = "messages/" + messageId + "/wallpaper-request",
+            body = WallpaperRespondBody(action)
+        )
+
     suspend fun upload(uri: Uri): MessageAttachment {
         val resolver = context.contentResolver
         val type = resolver.getType(uri) ?: "application/octet-stream"

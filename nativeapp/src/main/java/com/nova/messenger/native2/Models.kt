@@ -27,6 +27,28 @@ data class MeResponse(val user: NovaUser = NovaUser())
 data class ProfileUpdateBody(val displayName: String, val bio: String, val statusText: String)
 data class ProfileUpdateResponse(val user: NovaUser = NovaUser(), val token: String = "")
 
+data class WallpaperConfig(
+    val id: String = "midnight-grid",
+    val dim: Int = 10,
+    val atmosphere: String = "none",
+    val url: String? = null,
+    val updatedBy: Long = 0,
+    val updatedAt: String? = null,
+    val requestMessageId: Long = 0,
+    val acceptedBy: Long = 0
+)
+
+data class WallpaperRequest(
+    val id: String = "midnight-grid",
+    val dim: Int = 10,
+    val atmosphere: String = "none",
+    val url: String? = null,
+    val status: String = "pending",
+    val requestedBy: Long = 0,
+    val respondedBy: Long = 0,
+    val respondedAt: String? = null
+)
+
 data class LastMessage(
     val id: Long = 0,
     val body: String = "",
@@ -42,6 +64,7 @@ data class Conversation(
     val peer: NovaUser? = null,
     val system: Boolean = false,
     val pinned: Boolean = false,
+    val sharedWallpaper: WallpaperConfig? = null,
     val lastMessage: LastMessage? = null,
     val unread: Int = 0,
     val peerReadMessageId: Long = 0
@@ -92,6 +115,7 @@ data class NovaMessage(
     val sender: MessageSender = MessageSender(),
     val body: String = "",
     val attachment: MessageAttachment? = null,
+    val wallpaperRequest: WallpaperRequest? = null,
     val replyTo: MessageReply? = null,
     val createdAt: String = "",
     val editedAt: String? = null,
@@ -129,6 +153,20 @@ data class FriendRequestBody(val userId: Long)
 data class FriendRespondBody(val requestId: Long, val action: String)
 data class FriendRemoveBody(val userId: Long)
 data class DmBody(val userId: Long)
+
+data class WallpaperProposalBody(
+    val id: String,
+    val dim: Int,
+    val atmosphere: String,
+    val url: String? = null
+)
+data class WallpaperResetBody(val reset: Boolean = true)
+data class WallpaperRespondBody(val action: String)
+data class WallpaperActionResponse(
+    val ok: Boolean = true,
+    val message: NovaMessage? = null,
+    val sharedWallpaper: WallpaperConfig? = null
+)
 
 data class FriendItem(
     val user: NovaUser = NovaUser(),
