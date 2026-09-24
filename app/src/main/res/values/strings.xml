@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NOVA</string>
+    <string name="offline_title">Нет соединения</string>
+    <string name="offline_text">Не удалось открыть NOVA. Проверь интернет и повтори попытку.</string>
+    <string name="retry">Повторить</string>
+</resources>

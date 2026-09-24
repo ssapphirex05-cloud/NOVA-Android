@@ -1,0 +1,3 @@
+NOVA Android v1 is prepared for NOVA Messenger web/server build 3.8.87.
+Configured host: https://9yy8ob5y94yx.mjtest.ru/
+Date: 2026-09-24

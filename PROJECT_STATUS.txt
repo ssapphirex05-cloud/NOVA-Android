@@ -1,0 +1,14 @@
+NOVA Android v1 — 2026-09-24
+
+READY:
+- Native Android project created from NOVA Messenger 3.8.87 architecture.
+- Current NOVA host configured: https://9yy8ob5y94yx.mjtest.ru/
+- Microphone, file picker, downloads, cookies/localStorage, external links, fullscreen video, back navigation.
+- No database, secrets, VAPID private key or user uploads embedded.
+
+NOT COMPILED IN THIS ENVIRONMENT:
+- Android SDK / Gradle executable are not installed in the current runtime.
+- Project is prepared for Android Studio or included GitHub Actions build workflow.
+
+NEXT RECOMMENDED V2:
+- Native FCM push notifications for closed/background app.
