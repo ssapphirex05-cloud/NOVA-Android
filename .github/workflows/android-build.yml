@@ -20,10 +20,18 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Firebase config status
+        run: |
+          if [ -f app/google-services.json ]; then
+            echo "Firebase config detected: native FCM will be compiled in."
+          else
+            echo "Firebase config missing: APK will build, but native FCM will stay disabled."
+          fi
+
       - name: Build debug APK
         run: gradle assembleDebug
 
       - uses: actions/upload-artifact@v4
         with:
-          name: NOVA-Android-v1-debug
+          name: NOVA-Android-v1.1.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
